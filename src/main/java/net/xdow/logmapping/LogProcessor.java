@@ -1,5 +1,6 @@
 package net.xdow.logmapping;
 
+import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
@@ -17,11 +18,12 @@ import com.github.javaparser.ast.expr.LongLiteralExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NullLiteralExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
-import com.github.javaparser.printer.PrettyPrinter;
+import com.github.javaparser.printer.lexicalpreservation.LexicalPreservingPrinter;
 import net.xdow.logmapping.bean.MappingInfo;
 import net.xdow.logmapping.util.EncodeUtils;
 import net.xdow.logmapping.util.JavaParserUtils;
 import net.xdow.logmapping.util.L;
+import net.xdow.logmapping.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +37,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -75,7 +79,7 @@ public class LogProcessor {
             mEncodedMap = encodedMap;
         }
 
-        public void visit(MethodCallExpr methodCallExpr) {
+        public void visit(MethodCallExpr methodCallExpr, HashMap<String, String> processedMap) {
             int encodedIndexFlag = 0;
             NodeList<Expression> newArgList = new NodeList<>();
             NodeList<Expression> newPreArgList = new NodeList<>();
@@ -104,8 +108,14 @@ public class LogProcessor {
             //encodedIndexFlag
             newPreArgList.add(StaticJavaParser.parseExpression(String.valueOf(encodedIndexFlag)));
 
+            // Preserving line number, there is an bug in LexicalPreservingPrinter, while using methodCallExpr.setArguments
+            // application will stuck in com.github.javaparser.printer.lexicalpreservation.DifferenceElementCalculator.java:152
             newArgList.addAll(0, newPreArgList);
-            methodCallExpr.setArguments(newArgList);
+            MethodCallExpr clone = new MethodCallExpr(methodCallExpr.getScope().orElse(null), methodCallExpr.getNameAsString());;
+            clone.setArguments(newArgList);
+            int extractLineCount = methodCallExpr.getRange().map(Range::getLineCount).orElse(1) - 1;
+            String extractLineBreak = extractLineCount > 0 ? StringUtils.repeat("\n", extractLineCount) : null;
+            processedMap.put(LexicalPreservingPrinter.print(methodCallExpr), clone.toString() + extractLineBreak);
         }
 
         /**
@@ -221,7 +231,6 @@ public class LogProcessor {
         HashMap<Integer, MappingInfo> sEncodedMap = new HashMap<>();
         try {
             ExecutorService pool = Executors.newFixedThreadPool(mParserThreadCount <= 0 ? Runtime.getRuntime().availableProcessors() : mParserThreadCount);
-
             for (String inputDirPath : inputDirPaths) {
                 Path rootPath = Paths.get(inputDirPath);
                 Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
@@ -235,8 +244,10 @@ public class LogProcessor {
                                 L.d("processing file: " + path);
                                 Path localPath = rootPath.relativize(path);
                                 CompilationUnit compilationUnit = StaticJavaParser.parse(path);
-
+                                AtomicReference<Boolean> lexicalPreservingPrinterSetupRef = new AtomicReference<>(false);
+                                AtomicReference<Boolean> foundRef = new AtomicReference<>(false);
                                 MethodCallVisitor visitor = new MethodCallVisitor(sEncodedMap);
+                                HashMap<String, String> processedMap = new HashMap<>();
                                 compilationUnit.findAll(MethodCallExpr.class, methodCallExpr -> {
                                     AtomicReference<Boolean> reference = new AtomicReference<>(false);
                                     //test target package == log package
@@ -262,20 +273,38 @@ public class LogProcessor {
                                     if (!mKeywordSet.contains(methodDeclName)) {
                                         return false;
                                     }
+                                    foundRef.set(true);
                                     return true;
                                 }).forEach(methodCallExpr -> {
                                     try {
+                                        if (!lexicalPreservingPrinterSetupRef.get()) {
+                                            lexicalPreservingPrinterSetupRef.set(true);
+                                            LexicalPreservingPrinter.setup(compilationUnit);
+                                        }
+
                                         String className = rootPath.relativize(path).toString().replaceAll("[\\/]", ".");
                                         String pos = className + ":" + methodCallExpr.getRange().map(range -> range.begin.line).orElse(-1);
                                         L.d("processing " + methodCallExpr.toString() + " on: " + pos);
-                                        visitor.visit(methodCallExpr);
+                                        visitor.visit(methodCallExpr, processedMap);
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                         System.exit(-1);
                                     }
                                 });
                                 compilationUnit.setStorage(Paths.get(outputDirPath).resolve(localPath), StandardCharsets.UTF_8);
-                                compilationUnit.getStorage().ifPresent(storage -> storage.save(new PrettyPrinter()::print));
+                                compilationUnit.getStorage().ifPresent(storage -> storage.save(compilationUnit1 -> {
+                                    // Preserving line number
+                                    String java = LexicalPreservingPrinter.print(compilationUnit1);
+                                    Iterator<Map.Entry<String, String>> it = processedMap.entrySet().iterator();
+                                    while(it.hasNext()) {
+                                        Map.Entry<String, String> entry = it.next();
+                                        String originalCode = entry.getKey();
+                                        String replacedCode = entry.getValue();
+                                        java = java.replace(originalCode, replacedCode);
+                                    }
+                                    return java;
+                                }));
+
                             } catch (IOException e) {
                                 e.printStackTrace();
                                 System.exit(-1);

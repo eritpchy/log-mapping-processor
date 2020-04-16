@@ -26,7 +26,7 @@ cd log-processor
 ## Usage as library
 Gradle:
 ```gradle
-implementation 'net.xdow:log-mapping:1.0.3'
+implementation 'net.xdow:log-mapping:1.0.4'
 ```
 
 Maven:
@@ -34,7 +34,7 @@ Maven:
 <dependency>
     <groupId>net.xdow</groupId>
     <artifactId>log-mapping</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
