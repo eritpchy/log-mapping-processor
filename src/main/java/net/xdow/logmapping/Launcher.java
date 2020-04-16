@@ -73,7 +73,7 @@ public class Launcher {
             System.err.println(getVersionMessage());
             System.err.println("Obfuscate and transform log constant code like Proguard");
             System.err.println("Copyright (C) 2020 by Jason Eric");
-            System.err.println("Web site: https://github.com/eritpchy/log-processor");
+            System.err.println("Web site: https://github.com/eritpchy/log-mapping-processor");
             System.err.println();
             System.err.println("Usage: java -jar <launcher name> [option(s)]");
             System.err.println();

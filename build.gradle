@@ -44,7 +44,7 @@ publish {
     artifactId = 'log-mapping'
     publishVersion = version
     desc = 'Obfuscate and transform log constant code like Proguard'
-    website = 'https://github.com/eritpchy/log-processor'
+    website = 'https://github.com/eritpchy/log-mapping-processor'
 }
 
 dependencies {
