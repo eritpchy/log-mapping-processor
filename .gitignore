@@ -1,0 +1,5 @@
+/.local.sh
+.idea
+/.gradle/
+/build/
+/out
