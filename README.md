@@ -1,5 +1,12 @@
 # Log Mapping Processor
+[ ![Download](https://api.bintray.com/packages/xscript/maven/log-mapping/images/download.svg?version=latest) ](https://bintray.com/xscript/maven/log-mapping)
+
 Log Mapping Processor is an open-source library to obfuscate and transform log constant code like Proguard
+
+<p align="center">
+    <img src="https://github.com/eritpchy/log-mapping-processor/raw/master/files/diagram.svg">
+</p>
+
 ![sample](files/sample.png)
 
 ## Getting started
@@ -54,3 +61,9 @@ Code example: [TestMain.java](https://github.com/eritpchy/log-mapping-processor/
 ## Notice
 - Log format like "Log.error(...)" is supported
 - Log format like "Log.error("arg1:{} arg2:{}", arg1, arg2, ...)" is NOT supported
+
+
+## References
+- [Log Mapping Processor Android Gradle plugin](https://github.com/eritpchy/log-mapping-processor-android-gradle-plugin)
+- [Log Mapping Reverse](https://github.com/eritpchy/log-mapping-reverse)
+- [JavaParser](https://github.com/javaparser/javaparser)
