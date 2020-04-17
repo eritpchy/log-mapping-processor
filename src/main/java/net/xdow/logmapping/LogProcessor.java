@@ -291,20 +291,32 @@ public class LogProcessor {
                                         System.exit(-1);
                                     }
                                 });
-                                compilationUnit.setStorage(Paths.get(outputDirPath).resolve(localPath), StandardCharsets.UTF_8);
-                                compilationUnit.getStorage().ifPresent(storage -> storage.save(compilationUnit1 -> {
-                                    // Preserving line number
-                                    String java = LexicalPreservingPrinter.print(compilationUnit1);
-                                    Iterator<Map.Entry<String, String>> it = processedMap.entrySet().iterator();
-                                    while(it.hasNext()) {
-                                        Map.Entry<String, String> entry = it.next();
-                                        String originalCode = entry.getKey();
-                                        String replacedCode = entry.getValue();
-                                        java = java.replace(originalCode, replacedCode);
-                                    }
-                                    return java;
-                                }));
-
+                                Path outputPath = Paths.get(outputDirPath).resolve(localPath);
+                                outputPath.toFile().getParentFile().mkdirs();
+                                if (lexicalPreservingPrinterSetupRef.get()) {
+                                    compilationUnit.setStorage(outputPath, StandardCharsets.UTF_8);
+                                    compilationUnit.getStorage().ifPresent(storage -> storage.save(cu -> {
+                                        try {
+                                            // Preserving line number
+                                            String java = LexicalPreservingPrinter.print(cu);
+                                            Iterator<Map.Entry<String, String>> it = processedMap.entrySet().iterator();
+                                            while(it.hasNext()) {
+                                                Map.Entry<String, String> entry = it.next();
+                                                String originalCode = entry.getKey();
+                                                String replacedCode = entry.getValue();
+                                                java = java.replace(originalCode, replacedCode);
+                                            }
+                                            return java;
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                            System.exit(-1);
+                                            return null;
+                                        }
+                                    }));
+                                } else {
+                                    Files.deleteIfExists(outputPath);
+                                    Files.copy(path, outputPath);
+                                }
                             } catch (IOException e) {
                                 e.printStackTrace();
                                 System.exit(-1);
