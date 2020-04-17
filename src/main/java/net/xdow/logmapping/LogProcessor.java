@@ -114,7 +114,7 @@ public class LogProcessor {
             MethodCallExpr clone = new MethodCallExpr(methodCallExpr.getScope().orElse(null), methodCallExpr.getNameAsString());;
             clone.setArguments(newArgList);
             int extractLineCount = methodCallExpr.getRange().map(Range::getLineCount).orElse(1) - 1;
-            String extractLineBreak = extractLineCount > 0 ? StringUtils.repeat("\n", extractLineCount) : null;
+            String extractLineBreak = extractLineCount > 0 ? StringUtils.repeat("\n", extractLineCount) : "";
             processedMap.put(LexicalPreservingPrinter.print(methodCallExpr), clone.toString() + extractLineBreak);
         }
 
