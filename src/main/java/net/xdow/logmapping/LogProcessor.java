@@ -5,19 +5,7 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
-import com.github.javaparser.ast.expr.ArrayCreationExpr;
-import com.github.javaparser.ast.expr.BinaryExpr;
-import com.github.javaparser.ast.expr.BooleanLiteralExpr;
-import com.github.javaparser.ast.expr.CastExpr;
-import com.github.javaparser.ast.expr.CharLiteralExpr;
-import com.github.javaparser.ast.expr.DoubleLiteralExpr;
-import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.IntegerLiteralExpr;
-import com.github.javaparser.ast.expr.LiteralExpr;
-import com.github.javaparser.ast.expr.LongLiteralExpr;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.NullLiteralExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.printer.lexicalpreservation.LexicalPreservingPrinter;
 import net.xdow.logmapping.bean.MappingInfo;
 import net.xdow.logmapping.util.EncodeUtils;
@@ -28,23 +16,13 @@ import net.xdow.logmapping.util.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.nio.file.FileVisitResult.CONTINUE;
@@ -57,6 +35,7 @@ public class LogProcessor {
     private final Set<String> mImportKeywordSet = new HashSet<>();
     private final Set<String> mPackageKeywordSet = new HashSet<>();
     private int mParserThreadCount = 0;
+    private AtomicInteger mProcessRefMagicIndex = new AtomicInteger(0);
 
     public LogProcessor(String[] keywords) {
         for (String keyword : keywords) {
@@ -115,6 +94,7 @@ public class LogProcessor {
             clone.setArguments(newArgList);
             int extractLineCount = methodCallExpr.getRange().map(Range::getLineCount).orElse(1) - 1;
             String extractLineBreak = extractLineCount > 0 ? StringUtils.repeat("\n", extractLineCount) : "";
+            methodCallExpr.addArgument(buildProcessMagicIndexKey());
             processedMap.put(LexicalPreservingPrinter.print(methodCallExpr), clone.toString() + extractLineBreak);
         }
 
@@ -333,5 +313,9 @@ public class LogProcessor {
         } finally {
             EncodeUtils.saveEncodedMap(sEncodedMap, new File(mappingFilePath));
         }
+    }
+
+    public String buildProcessMagicIndexKey() {
+        return "\"magic_index_" + mProcessRefMagicIndex.addAndGet(1) + "\"";
     }
 }
