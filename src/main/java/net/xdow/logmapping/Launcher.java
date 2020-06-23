@@ -9,7 +9,7 @@ import net.xdow.logmapping.util.L;
 public class Launcher {
 
     private static String getVersionMessage() {
-        return "LogProcessor version 1.0.6";
+        return "LogProcessor version 1.0.7";
     }
 
     public static void main(String[] args) throws Exception {
